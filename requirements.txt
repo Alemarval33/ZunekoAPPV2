@@ -1,8 +1,8 @@
-flask
-flask-login
-flask-wtf
-wtforms
-email_validator
-flask-babel
-flask-limiter
-gunicorn
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env.*
+.DS_Store
