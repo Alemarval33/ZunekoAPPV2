@@ -1,15 +1,26 @@
 import os
 from flask import Flask, render_template, redirect, url_for, flash, request
-from flask_wtf.csrf import CSRFProtect
+from flask_mail import Mail
+from flask_wtf import CSRFProtect
 from app.forms import RegistrationForm
 from app.models import User, init_db
 
+mail = Mail()
+csrf = CSRFProtect()
+
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-cambiar')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'devkey')
+    app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 465))
+    app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'True') == 'True'
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
-    csrf = CSRFProtect(app)
-    init_db()  # Inicializar base de datos
+    mail.init_app(app)
+    csrf.init_app(app)
+    init_db()  # Inicializa la DB en la primer petición
 
     @app.route("/")
     def index():
