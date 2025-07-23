@@ -1,45 +1,50 @@
 import sqlite3
-import os
 from werkzeug.security import generate_password_hash, check_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+DATABASE = 'zunekoapp.db'
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    if not os.path.exists(DB_PATH):
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("""
-        CREATE TABLE users (
+    """Crea la tabla users si no existe."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
-        )""")
-        conn.commit()
-        conn.close()
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 class User:
     @staticmethod
     def get_by_email(email):
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db()
         c = conn.cursor()
-        c.execute("SELECT id, email, password_hash FROM users WHERE email=?", (email,))
+        c.execute('SELECT * FROM users WHERE email = ?', (email,))
         row = c.fetchone()
         conn.close()
         if row:
-            return User(row[1], row[2], row[0])
+            return User(row['id'], row['email'], row['password'])
         return None
 
     @staticmethod
     def create(email, password):
-        password_hash = generate_password_hash(password)
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db()
         c = conn.cursor()
-        c.execute("INSERT INTO users (email, password_hash) VALUES (?,?)", (email, password_hash))
+        hashed_password = generate_password_hash(password)
+        c.execute('INSERT INTO users (email, password) VALUES (?, ?)', (email, hashed_password))
         conn.commit()
         conn.close()
-        return User(email, password_hash)
+        return User.get_by_email(email)
 
-    def __init__(self, email, password_hash, id=None):
+    def __init__(self, id, email, password_hash):
         self.id = id
         self.email = email
         self.password_hash = password_hash
