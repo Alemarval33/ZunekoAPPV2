@@ -1,9 +1,15 @@
+import os
 from flask import Flask, render_template, redirect, url_for, flash, request
+from flask_wtf.csrf import CSRFProtect
 from app.forms import RegistrationForm
-from app.models import User
+from app.models import User, init_db
 
 def create_app():
     app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-cambiar')
+
+    csrf = CSRFProtect(app)
+    init_db()  # Inicializar base de datos
 
     @app.route("/")
     def index():
@@ -16,9 +22,9 @@ def create_app():
             if User.get_by_email(form.email.data):
                 flash('Ese email ya está registrado.', 'danger')
             else:
-                user = User.create(form.email.data, form.password.data)
+                User.create(form.email.data, form.password.data)
                 flash('Usuario creado correctamente. Ahora podés iniciar sesión.', 'success')
-                return redirect(url_for('login'))
+                return redirect(url_for('index'))
         return render_template('register.html', form=form)
 
     return app
