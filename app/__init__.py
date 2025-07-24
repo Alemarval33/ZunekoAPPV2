@@ -38,4 +38,22 @@ def create_app():
                 return redirect(url_for('index'))
         return render_template('register.html', form=form)
 
+    from app.forms import RegistrationForm, LoginForm
+# ...todo lo anterior...
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def login():
+        form = LoginForm()
+        if form.validate_on_submit():
+            user = User.get_by_email(form.email.data)
+            if user and user.check_password(form.password.data) and user.activo:
+                flash('¡Bienvenido!', 'success')
+                return redirect(url_for('index'))
+            elif user and not user.activo:
+                flash('Usuario inactivo. Contacte al administrador.', 'danger')
+            else:
+                flash('Usuario o contraseña incorrectos.', 'danger')
+        return render_template('login.html', form=form)
+
+
     return app
