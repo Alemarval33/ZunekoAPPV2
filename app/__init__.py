@@ -1,65 +1,41 @@
-import sqlite3
-from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from flask import Flask, render_template, redirect, url_for, flash, request
+from flask_mail import Mail
+from flask_wtf import CSRFProtect
+from app.forms import RegistrationForm
+from app.models import User, init_db
 
-DATABASE = 'zunekoapp.db'
+mail = Mail()
+csrf = CSRFProtect()
 
-def get_db():
-    """Abre una conexión nueva a la base de datos."""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+def create_app():
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'devkey')
+    app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 465))
+    app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'True') == 'True'
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
-def init_db():
-    """Crea la tabla users si no existe."""
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            activo INTEGER NOT NULL DEFAULT 1
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    mail.init_app(app)
+    csrf.init_app(app)
+    init_db()
 
-class User:
-    @staticmethod
-    def get_by_email(email):
-        """Busca usuario por email. Retorna una instancia User o None."""
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('SELECT * FROM users WHERE email = ?', (email,))
-        row = c.fetchone()
-        conn.close()
-        if row:
-            return User(row['id'], row['email'], row['password'], row['activo'])
-        return None
+    @app.route("/")
+    def index():
+        return "¡Bienvenido a ZunekoApp!"
 
-    @staticmethod
-    def create(email, password, activo=True):
-        """Crea un usuario nuevo y lo retorna."""
-        conn = get_db()
-        c = conn.cursor()
-        hashed_password = generate_password_hash(password)
-        c.execute(
-            'INSERT INTO users (email, password, activo) VALUES (?, ?, ?)',
-            (email, hashed_password, int(activo))
-        )
-        conn.commit()
-        conn.close()
-        return User.get_by_email(email)
+    @app.route('/register', methods=['GET', 'POST'])
+    def register():
+        form = RegistrationForm()
+        if form.validate_on_submit():
+            if User.get_by_email(form.email.data):
+                flash('Ese email ya está registrado.', 'danger')
+            else:
+                User.create(form.email.data, form.password.data)
+                flash('Usuario creado correctamente. Ahora podés iniciar sesión.', 'success')
+                return redirect(url_for('index'))
+        return render_template('register.html', form=form)
 
-    def __init__(self, id, email, password_hash, activo):
-        self.id = id
-        self.email = email
-        self.password_hash = password_hash
-        self.activo = activo
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    def is_active(self):
-        """Devuelve True si el usuario está activo."""
-        return bool(self.activo)
+    return app
