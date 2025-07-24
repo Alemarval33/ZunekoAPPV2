@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 DATABASE = 'zunekoapp.db'
 
 def get_db():
+    """Abre una conexión nueva a la base de datos."""
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
@@ -26,6 +27,7 @@ def init_db():
 class User:
     @staticmethod
     def get_by_email(email):
+        """Busca usuario por email. Retorna una instancia User o None."""
         conn = get_db()
         c = conn.cursor()
         c.execute('SELECT * FROM users WHERE email = ?', (email,))
@@ -37,10 +39,14 @@ class User:
 
     @staticmethod
     def create(email, password, activo=True):
+        """Crea un usuario nuevo y lo retorna."""
         conn = get_db()
         c = conn.cursor()
         hashed_password = generate_password_hash(password)
-        c.execute('INSERT INTO users (email, password, activo) VALUES (?, ?, ?)', (email, hashed_password, int(activo)))
+        c.execute(
+            'INSERT INTO users (email, password, activo) VALUES (?, ?, ?)',
+            (email, hashed_password, int(activo))
+        )
         conn.commit()
         conn.close()
         return User.get_by_email(email)
@@ -53,3 +59,7 @@ class User:
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def is_active(self):
+        """Devuelve True si el usuario está activo."""
+        return bool(self.activo)
