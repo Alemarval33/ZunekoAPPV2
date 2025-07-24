@@ -40,8 +40,10 @@ class User:
         conn = get_db()
         c = conn.cursor()
         hashed_password = generate_password_hash(password)
-        c.execute('INSERT INTO users (email, password, activo) VALUES (?, ?, ?)', 
-                  (email, hashed_password, int(activo)))
+        c.execute(
+            'INSERT INTO users (email, password, activo) VALUES (?, ?, ?)', 
+            (email, hashed_password, int(activo))
+        )
         conn.commit()
         conn.close()
         return User.get_by_email(email)
@@ -50,7 +52,11 @@ class User:
         self.id = id
         self.email = email
         self.password_hash = password_hash
-        self.activo = bool(activo)
+        self.activo = activo  # 0 o 1
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def is_active(self):
+        """True si el usuario está activo."""
+        return bool(self.activo)
